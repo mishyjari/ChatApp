@@ -17,9 +17,25 @@ const viewsPath = path.join(__dirname, '../templates/views');
 app.use(express.static(publicPath));
 
 // Socket.io config
-io.on('connection', () => {
-    console.log('New websocket connection.')
-})
+let count = 0;
+io.on('connection', socket => {
+    io.emit('newMessage', 'A user has joined.');
+
+    socket.on('newMessage', (msg, cb) => {
+        socket.broadcast.emit('newMessage', `New Message: ${msg}`);
+        socket.emit('newMessage', msg);
+        cb(msg);
+    });
+
+    socket.on('shareLocation', (latitude, longitude, cb) => {
+        socket.broadcast.emit('shareLocation', `A user has shared their location: https://google.com/maps?q=${latitude},${longitude}`);
+        cb(`${latitude}, ${longitude}`)
+    });
+
+    socket.on('disconnect', () => {
+        io.emit('newMessage', 'A user has left')
+    });
+});
 
 // Set view engine
 app.set('view engine', 'hbs');
