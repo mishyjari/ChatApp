@@ -3,6 +3,7 @@ const path = require('path');
 const http = require('http');
 const hbs = require('hbs');
 const socketio = require('socket.io');
+const { generateMessage, generateLocationMessage } = require('./utils/messages.js');
 
 // Set up Express server
 const app = express();
@@ -19,32 +20,34 @@ app.use(express.static(publicPath));
 // Socket.io config
 let count = 0;
 io.on('connection', socket => {
-    io.emit('newMessage', 'A user has joined.');
+    socket.emit('newMessage', generateMessage('Welcome', 'Friendly Robot'));
+    socket.broadcast.emit('newMessage', generateMessage('A User has joined', 'Friendly Robot'));
 
     socket.on('newMessage', (msg, cb) => {
-        socket.broadcast.emit('newMessage', `New Message: ${msg}`);
-        socket.emit('newMessage', msg);
+        socket.broadcast.emit('newMessage', generateMessage(msg, 'New Message'));
+        socket.emit('newMessage', generateMessage(msg, 'Me'));
         cb(msg);
     });
 
     socket.on('shareLocation', (latitude, longitude, cb) => {
-        socket.broadcast.emit('shareLocation', `A user has shared their location: https://google.com/maps?q=${latitude},${longitude}`);
-        cb(`${latitude}, ${longitude}`)
+        socket.broadcast.emit('shareLocation', generateLocationMessage(`https://google.com/maps?q=${latitude},${longitude}`, 'A user has shared their location'));
+        socket.emit('shareLocation', generateLocationMessage(`https://google.com/maps?q=${latitude},${longitude}`, 'My Location'))
+        cb(`${latitude}, ${longitude}`);
     });
 
     socket.on('disconnect', () => {
-        io.emit('newMessage', 'A user has left')
+        io.emit('newMessage', generateMessage('A user has left', 'Friendly Robot'))
     });
 });
 
 // Set view engine
-app.set('view engine', 'hbs');
-app.set('views', viewsPath);
+// app.set('view engine', 'hbs');
+// app.set('views', viewsPath);
 
 // Routes
-app.get('/', ( req, res ) => {
-    res.render('index')
-});
+// app.get('/', ( req, res ) => {
+//     res.render('index')
+// });
 
 // Start server
 server.listen(port, () => {

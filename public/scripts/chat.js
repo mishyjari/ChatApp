@@ -1,33 +1,63 @@
 const socket = io();
 
+const $messageForm = document.getElementById('newMessageForm');
+const $messageFormInput = $messageForm.elements.message;
+const $messageFormButton = document.getElementById('newMessageButton');
+const $shareLocationButton = document.getElementById('shareLocationButton');
+const $messages = document.getElementById('messages');
+
+// Templates
+const messageTemplate = document.getElementById('message-template').innerHTML;
+const locationTemplate = document.getElementById('share-location-template').innerHTML;
+
 socket.on('newMessage', msg => {
-    console.log(`${msg}`)
+    const html = Mustache.render(messageTemplate, { 
+        msg: msg.text,
+        heading: msg.heading,
+        createdAt: moment(msg.createdAt).format("H:mm")
+    });    
+    $messages.insertAdjacentHTML('beforeend', html)
 });
 
-socket.on('shareLocation', msg => {
-    console.log(msg)
-    
-})
+socket.on('shareLocation', locationObj => {
+    const html = Mustache.render(locationTemplate, { 
+        url: locationObj.url,
+        heading: locationObj.heading,
+        createdAt: moment(locationObj.createdAt).format("H:mm")
+     });
+    $messages.insertAdjacentHTML('beforeend', html)
+});
 
-document.getElementById('newMessageForm')
-    .addEventListener('submit', e => {
-        e.preventDefault();
-        const msg = e.target.elements.message.value;
+
+$messageForm.addEventListener('submit', e => {
+    e.preventDefault();
+
+    const msg = $messageFormInput.value;
+
+    if ( msg ) {
+        $messageFormButton.setAttribute('disabled', 'diabled');
+
         socket.emit('newMessage', msg, msg => {
-            console.log(`Me: ${msg}`)
+            $messageFormButton.removeAttribute('disabled');
+            $messageFormInput.value = '';
+            $messageFormInput.focus();
         });
-    });
+    }
+});
 
-document.getElementById('shareLocation')
-    .addEventListener('click', () => {
-        if ( !navigator.geolocation ) {
-            return alert('Geolocation is not supported!')
-        }
+$shareLocationButton.addEventListener('click', () => {
+    if ( !navigator.geolocation ) {
+        return alert('Geolocation is not supported!')
+    }
 
-        navigator.geolocation.getCurrentPosition(pos => {
-            const { latitude, longitude } = pos.coords;
-            socket.emit('shareLocation', latitude, longitude, coords => {
-                console.log(`You have shared your location: ${coords}`)
-            })
+    $shareLocationButton.setAttribute('disabled', 'disabled');
+    $shareLocationButton.innerText = 'Fetching...'
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        socket.emit('shareLocation', latitude, longitude, coords => {
+            $shareLocationButton.removeAttribute('disabled');
+            $shareLocationButton.innerText = 'Share Location'
         })
     })
+})
